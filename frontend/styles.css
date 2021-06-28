@@ -1,0 +1,143 @@
+@font-face {
+    font-family: 'Teko';
+    src: url('fonts/Teko-Regular.ttf');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Teko';
+    src: url('fonts/Teko-Bold.ttf');
+    font-weight: bold;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'OpenSans';
+    src: url('fonts/OpenSans-Regular.ttf');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'OpenSans';
+    src: url('fonts/OpenSans-Bold.ttf');
+    font-weight: bold;
+    font-style: normal;
+}
+/* Defaults */
+
+* {
+    font-family: 'Heebo', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* Light theme - default */
+:root {
+    --bg: #fff;
+    --fg: #101010;
+    --fga: #333;
+    --fgah: #888;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+    /* Dark theme */
+    :root {
+        --bg: #000;
+        --fg: #ddd;
+        --fga: #ccc;
+        --fgah: #777;
+    }
+}
+
+body {
+    background: var(--bg);
+    color: var(--fg);
+}
+
+/* Main Page elements */
+
+main {
+    margin: auto;
+    padding: 0px 16px;
+}
+
+@media (min-width: 440px) {
+    main {
+        padding: 0px 32px;
+    }
+}
+
+@media (min-width: 700px) {
+    main { max-width: 1000px ; }
+}
+
+footer {
+    text-align: center;
+}
+
+
+/* Typografy */
+
+h1, h2, h3, h4, h5 {
+    font-family: 'Teko', sans-serif;
+}
+
+nav a {
+    font-family: 'Teko', sans-serif;
+}
+
+h1 {
+    font-size: 2.5rem;
+    line-height: 2.5rem;
+    margin: 16px 0px;
+}
+
+p {
+    margin-bottom: 16px;
+    line-height: 1.3rem;
+    font-size: 1.05rem;
+}
+
+/* Navigation */
+
+nav {
+    text-align: center;
+    padding: 12px 0px;
+}
+
+nav ul {
+    display: inline;
+    padding: 12px 0px;
+    list-style-type: none;
+}
+
+nav li {
+    display: inline;
+    margin: 0 16px;
+}
+
+#logo {
+    color: var(--fga);
+    text-decoration: none;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-right: 40px;
+}
+
+#logo:hover {
+    color: var(--fgah);
+    text-decoration: underline;
+}
+
+nav li a {
+    color: var(--fga);
+    text-decoration: none;
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+nav li a:hover {
+    color: var(--fgah);
+    text-decoration: underline;
+}
