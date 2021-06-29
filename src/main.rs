@@ -1,7 +1,16 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::{fs::NamedFile, response::{Redirect, content::{self, Html}}, tokio::{fs::File, io::AsyncReadExt}};
+use rocket::{
+    fs::NamedFile,
+    http::Status,
+    response::{
+        content::{self, Html},
+        Redirect,
+    },
+    tokio::{fs::File, io::AsyncReadExt},
+    Request,
+};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Responder)]
@@ -14,7 +23,9 @@ pub enum FileResponse {
 async fn files(path: PathBuf) -> Option<FileResponse> {
     if path.to_str().unwrap().eq("") {
         // Index
-        let file = NamedFile::open(Path::new("public/").join("index").with_extension("html")).await.ok();
+        let file = NamedFile::open(Path::new("public/").join("index").with_extension("html"))
+            .await
+            .ok();
         if let Some(file) = file {
             return Some(FileResponse::Template(file));
         }
@@ -33,7 +44,9 @@ async fn files(path: PathBuf) -> Option<FileResponse> {
             }
         } else {
             // No extension - add html
-            let file = NamedFile::open(Path::new("public/").join(path).with_extension("html")).await.ok();
+            let file = NamedFile::open(Path::new("public/").join(path).with_extension("html"))
+                .await
+                .ok();
             if let Some(file) = file {
                 return Some(FileResponse::Template(file));
             }
@@ -41,7 +54,6 @@ async fn files(path: PathBuf) -> Option<FileResponse> {
         None
     }
 }
-
 
 #[get("/blog/<file..>")]
 async fn blog(file: PathBuf) -> Option<Html<String>> {
@@ -61,9 +73,15 @@ async fn blog(file: PathBuf) -> Option<Html<String>> {
     None
 }
 
+#[catch(default)]
+fn default_catcher(status: Status, request: &Request) -> String { /* .. */
+    format!("{:?}", status)
+}
+
 #[launch]
 fn rocket() -> _ {
     rocket::build()
+        .register("/", catchers![default_catcher])
         .mount("/", routes![files])
         .mount("/blog", routes![blog])
 }
