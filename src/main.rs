@@ -16,24 +16,26 @@ use std::collections::HashMap;
 
 #[derive(Debug, Responder)]
 pub enum FileResponse {
+    Content(Html<String>),
     Template(NamedFile),
     Redirect(Redirect),
 }
 
+
+const EXTENSION_ORDER: [&str; 2] = ["rhc", "html"];
+
 #[get("/<path..>")]
 async fn files(path: PathBuf) -> Option<FileResponse> {
     if path.to_str().unwrap().eq("") {
-        // Index
-        let file = NamedFile::open(Path::new("public/").join("index").with_extension("html"))
-            .await
-            .ok();
-        if let Some(file) = file {
-            return Some(FileResponse::Template(file));
+        let index_path = Path::new("index");
+        return match read_content_path(&index_path).await {
+            Ok(content) => Some(FileResponse::Content(content)),
+            Err(err) => None,
         }
-        None
     } else {
-        if let Some(extension) = path.extension() {
-            if extension == "html" {
+        if let Some(ext) = path.extension() {
+            // Check if content ext & redirect to right path
+            if EXTENSION_ORDER.contains(&ext.to_str().unwrap()) {
                 let cleaned_path = path.with_extension("");
                 let path_string = format!("/{}", cleaned_path.to_str().unwrap());
                 return Some(FileResponse::Redirect(Redirect::to(path_string)));
@@ -44,15 +46,39 @@ async fn files(path: PathBuf) -> Option<FileResponse> {
                 return Some(FileResponse::Template(file));
             }
         } else {
-            // No extension - add html
-            let file = NamedFile::open(Path::new("public/").join(path).with_extension("html"))
-                .await
-                .ok();
-            if let Some(file) = file {
-                return Some(FileResponse::Template(file));
+            // No extension - search for extension
+            return match read_content_path(&path).await {
+                Ok(content) => {
+                    Some(FileResponse::Content(content))
+                },
+                Err(err) => None,
             }
         }
         None
+    }
+}
+
+async fn read_content_path(path: &Path) -> Result<Html<String>, String> {
+    for &ext in &EXTENSION_ORDER {
+        let file_path = Path::new("public/").join(path.clone()).with_extension(ext);
+        if file_path.exists() {
+            return read_content_file(&file_path).await;
+        }
+    }
+    Err(format!("No file found with path/url '{}'!", path.to_str().unwrap()))
+}
+
+async fn read_content_file(path: &Path) -> Result<Html<String>, String> {
+    let ext = path.extension().unwrap().to_str().unwrap(); 
+    return match ext {
+        "html" => {
+            match read_file(path).await {
+                Ok(data) => Ok(content::Html(data)),
+                Err(err) => Err(err),
+            }
+        }
+        "rhc" => concatenate_rhc(path, HashMap::new()).await,
+        _ => Err(format!("Unknown extension '{}'!", ext)),
     }
 }
 
@@ -87,28 +113,25 @@ async fn read_file(path: &Path) -> Result<String, String> {
     Err("Something went wrong: TODO: better errors".to_string())
 }
 
-async fn format_dynamic(path: &Path, values: HashMap<String, String>) -> Result<String, String> {
+async fn concatenate_rhc(path: &Path, values: HashMap<String, String>) -> Result<content::Html<String>, String> {
     match read_file(path).await {
         Ok(text) => {
             let mut fmt_text = text.to_string();
             loop {
                 let mut found_start = false;
                 let mut found_end = false; 
-                let mut i = 0;
                 let mut start_index = 0;
                 let mut end_index = 0;
-                while i < fmt_text.len() {
-                    if fmt_text.chars().nth(i).unwrap() == '{' {
+                for (i, c1) in fmt_text.chars().enumerate() {
+                    if c1 == '{' {
                         found_start = true;
                         start_index = i;
-                        let mut j = i;
-                        while j < fmt_text.len() {
-                            if fmt_text.chars().nth(j).unwrap() == '}' {
+                        for (j, c2) in fmt_text[i..fmt_text.len()].chars().enumerate() {
+                            if c2 == '}' {
                                 found_end = true;
-                                end_index = j;
+                                end_index = i + j;
                                 break;
                             }
-                            j += 1;
                         }
                         if !found_end {
                             return Err("Syntax error: no end character found!".to_string());
@@ -117,13 +140,11 @@ async fn format_dynamic(path: &Path, values: HashMap<String, String>) -> Result<
                             break;
                         }
                     }
-                    i += 1;
                 } 
                 if !found_start {
                     break;
                 } else if found_start && found_end {
                     let key = &fmt_text[start_index+1..end_index];
-                    println!("Key is: {} ", key);
                     if let Some(value) = values.get(key) {
                         let start = &fmt_text[0..start_index];
                         let end = &fmt_text[end_index+1..fmt_text.len()];
@@ -133,7 +154,7 @@ async fn format_dynamic(path: &Path, values: HashMap<String, String>) -> Result<
                     }
                 }
             }
-            return Ok(fmt_text);
+            return Ok(content::Html(fmt_text));
         },
         Err(err) => {
             return Err(format!("Something went wrong while reading the file: {}", err).to_string()); 
@@ -157,10 +178,10 @@ fn get_error_msg(code: u16) -> &'static str {
     let error_message = get_error_msg(error_code);
     values.insert("error_code".to_string(), status.code.to_string());
     values.insert("error_message".to_string(), error_message.to_string());
-    let html_output = format_dynamic(Path::new("public/error.html"), values).await;
+    let html_output = concatenate_rhc(Path::new("public/error.html"), values).await;
     match html_output {
         Ok(html) => {
-            return content::Html(html);
+            return html;
         },
         Err(err) => {
             println!("Error while formatting error page: {}", err);
