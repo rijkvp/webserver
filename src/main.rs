@@ -178,7 +178,7 @@ fn get_error_msg(code: u16) -> &'static str {
     let error_message = get_error_msg(error_code);
     values.insert("error_code".to_string(), status.code.to_string());
     values.insert("error_message".to_string(), error_message.to_string());
-    let html_output = concatenate_rhc(Path::new("public/error.html"), values).await;
+    let html_output = concatenate_rhc(Path::new("public/error.rhc"), values).await;
     match html_output {
         Ok(html) => {
             return html;
