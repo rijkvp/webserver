@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{@inc/head.rhc}
+<body>
+    <header>
+        <h1>About</h1>
+    </header>
+    {@inc/nav.rhc}
+    <main>
+        <h2>My story</h2>
+        <p>
+            Blah blah blah
+        </p>
+    </main>
+    {@inc/footer.rhc}
+</body>
+
+</html>

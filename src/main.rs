@@ -13,6 +13,7 @@ use rocket::{
 };
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
+use async_recursion::async_recursion;
 
 #[derive(Debug, Responder)]
 pub enum FileResponse {
@@ -29,7 +30,7 @@ async fn files(path: PathBuf) -> Option<FileResponse> {
     if path.to_str().unwrap().eq("") {
         let index_path = Path::new("index");
         return match read_content_path(&index_path).await {
-            Ok(content) => Some(FileResponse::Content(content)),
+            Ok(content) => Some(FileResponse::Content(content::Html(content))),
             Err(err) => None,
         }
     } else {
@@ -49,16 +50,20 @@ async fn files(path: PathBuf) -> Option<FileResponse> {
             // No extension - search for extension
             return match read_content_path(&path).await {
                 Ok(content) => {
-                    Some(FileResponse::Content(content))
+                    Some(FileResponse::Content(content::Html(content)))
                 },
-                Err(err) => None,
+                Err(err) => {
+                    // TODO: Proper error handling (throw 500)
+                    println!("Error: {}", err);
+                    None 
+                },
             }
         }
         None
     }
 }
 
-async fn read_content_path(path: &Path) -> Result<Html<String>, String> {
+async fn read_content_path(path: &Path) -> Result<String, String> {
     for &ext in &EXTENSION_ORDER {
         let file_path = Path::new("public/").join(path.clone()).with_extension(ext);
         if file_path.exists() {
@@ -68,16 +73,16 @@ async fn read_content_path(path: &Path) -> Result<Html<String>, String> {
     Err(format!("No file found with path/url '{}'!", path.to_str().unwrap()))
 }
 
-async fn read_content_file(path: &Path) -> Result<Html<String>, String> {
+async fn read_content_file(path: &Path) -> Result<String, String> {
     let ext = path.extension().unwrap().to_str().unwrap(); 
     return match ext {
         "html" => {
             match read_file(path).await {
-                Ok(data) => Ok(content::Html(data)),
+                Ok(data) => Ok(data),
                 Err(err) => Err(err),
             }
         }
-        "rhc" => concatenate_rhc(path, HashMap::new()).await,
+        "rhc" => concatenate_rhc(path, &HashMap::new()).await,
         _ => Err(format!("Unknown extension '{}'!", ext)),
     }
 }
@@ -113,7 +118,8 @@ async fn read_file(path: &Path) -> Result<String, String> {
     Err("Something went wrong: TODO: better errors".to_string())
 }
 
-async fn concatenate_rhc(path: &Path, values: HashMap<String, String>) -> Result<content::Html<String>, String> {
+#[async_recursion]
+async fn concatenate_rhc(path: &Path, values: &HashMap<String, String>) -> Result<String, String> {
     match read_file(path).await {
         Ok(text) => {
             let mut fmt_text = text.to_string();
@@ -145,16 +151,34 @@ async fn concatenate_rhc(path: &Path, values: HashMap<String, String>) -> Result
                     break;
                 } else if found_start && found_end {
                     let key = &fmt_text[start_index+1..end_index];
-                    if let Some(value) = values.get(key) {
-                        let start = &fmt_text[0..start_index];
-                        let end = &fmt_text[end_index+1..fmt_text.len()];
-                        fmt_text = start.to_string() + value + &end;
+                    let first_char = key.chars().nth(0).unwrap();
+                    let start = &fmt_text[0..start_index];
+                    let end = &fmt_text[end_index+1..fmt_text.len()];
+                    
+                    println!("First char: {}, key: {}", first_char, key);
+                    if first_char == '@' {
+                        let file_ref = &key[1..key.len()];
+                        println!("Ref: {}, Path: {}", file_ref, path.display());
+                        let nested_path = path.parent().unwrap().join(file_ref);
+                        println!("Nested path: {}", nested_path.display());
+                        match concatenate_rhc(nested_path.as_path(), &values).await {
+                            Ok(result) => {
+                                fmt_text = start.to_string() + result.as_str() + &end;
+                            },
+                            Err(err) => {
+                                return Err(format!("Error while concatenating '{}'!\n{}", nested_path.display(), err));
+                            }
+                        }
                     } else {
-                        return Err(format!("Key '{}' not found!", key).to_string());
+                        if let Some(value) = values.get(key) {
+                            fmt_text = start.to_string() + value + &end;
+                        } else {
+                            return Err(format!("Key '{}' not found!", key).to_string());
+                        }   
                     }
                 }
             }
-            return Ok(content::Html(fmt_text));
+            return Ok(fmt_text);
         },
         Err(err) => {
             return Err(format!("Something went wrong while reading the file: {}", err).to_string()); 
@@ -178,10 +202,10 @@ fn get_error_msg(code: u16) -> &'static str {
     let error_message = get_error_msg(error_code);
     values.insert("error_code".to_string(), status.code.to_string());
     values.insert("error_message".to_string(), error_message.to_string());
-    let html_output = concatenate_rhc(Path::new("public/error.rhc"), values).await;
+    let html_output = concatenate_rhc(Path::new("public/error.rhc"), &values).await;
     match html_output {
         Ok(html) => {
-            return html;
+            return content::Html(html);
         },
         Err(err) => {
             println!("Error while formatting error page: {}", err);

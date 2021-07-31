@@ -1,42 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="utf-8">
-    <title>Minimal Website</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="styles.css">
-</head>
-
+{@inc/head.rhc}
 <body>
     <header>
         <h1>Contact</h1>
     </header>
-    <nav>
-        <a id="logo" href="index.html">@rijkvp</a>
-        <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="#">Blog</a></li>
-            <li><a href="#">About</a></li>
-            <li><a href="contact.html">Contact</a></li>
-        </ul>
-    </nav>
+    {@inc/nav.rhc}
     <main>
-        <h1>Digital contact</h1>
+        <h2>Digital contact</h2>
+        Feel free to send me a message!
         <ul>
             <li>
-                <p><strong>Email:</strong> <a href="mailto:rijk@rijkvp.nl">rijk@rijkvp.nl</a></p>
+                <p><strong>Email:</strong> <a href="mailto:mail@rijkvp.nl">mail@rijkvp.nl</a></p>
             </li>
+            <li>
+                <p><strong>Matrix:</strong> <a href="https://matrix.to/#/@rijkvp:matrix.org">@rijkvp</a></p>
+            </li>
+        </ul>
+        <h2>Accounts</h2>
+        Follow my work on the following platforms:   
+        <ul>
             <li>
                 <p><strong>GitHub:</strong> <a href="https://github.com/rijkvp">@rijkvp</a></p>
             </li>
+            <li>
+                <p><strong>Odysee:</strong> <a href="https://odysee.com/@rijkvp:2">@rijkvp</a></p>
+            </li>
         </ul>
-        <p>Note that I don't have any accounts on Facebook, Twitter, Instagram, Reddit, Snapchat, TikTok.</p>
-    </main>
-    <footer>
-        Rijk van Putten &middot; &copy; Copyright 2021
-    </footer>
-    <script> </script>
+        <p>Note that I don't have any accounts on Facebook, Twitter, Instagram, Reddit, Snapchat, TikTok.</p> </main>
+    {@inc/footer.rhc}
 </body>
 
 </html>
