@@ -23,12 +23,14 @@ pub enum FileResponse {
 }
 
 
+const HOME_PAGE: &str = "home";
 const EXTENSION_ORDER: [&str; 2] = ["rhc", "html"];
 
 #[get("/<path..>")]
 async fn files(path: PathBuf) -> Option<FileResponse> {
-    if path.to_str().unwrap().eq("") {
-        let index_path = Path::new("index");
+    let path_str = path.to_str().unwrap(); 
+    if path_str.eq("") {
+        let index_path = Path::new(HOME_PAGE);
         return match read_content_path(&index_path).await {
             Ok(content) => Some(FileResponse::Content(content::Html(content))),
             Err(err) => None,
