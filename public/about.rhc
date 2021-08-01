@@ -10,7 +10,13 @@
     <main>
         <h2>My story</h2>
         <p>
-            Blah blah blah
+            This is a really uninteresting story about how I got into computer stuff.
+        </p>
+        <p>
+            Someday I learned about computers
+            Windows 7 self learning
+            Scratch python
+            
         </p>
     </main>
     {@inc/footer.rhc}

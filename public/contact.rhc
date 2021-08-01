@@ -2,6 +2,7 @@
 <html lang="en">
 
 {@inc/head.rhc}
+
 <body>
     <header>
         <h1>Contact</h1>
@@ -28,7 +29,6 @@
                 <p><strong>Odysee:</strong> <a href="https://odysee.com/@rijkvp:2">@rijkvp</a></p>
             </li>
         </ul>
-        <p>Note that I don't have any accounts on Facebook, Twitter, Instagram, Reddit, Snapchat, TikTok.</p> </main>
     {@inc/footer.rhc}
 </body>
 

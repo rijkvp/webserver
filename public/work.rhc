@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{@inc/head.rhc}
+
+<body>
+    <header>
+        <h1>Work</h1>
+    </header>
+    {@inc/nav.rhc}
+    <main>
+        <p>Over the course of years I have worked on several interesting projects.</p>
+        <article>
+            <h2>YT-Shell</h2>
+            <p class="date-label">APR/MAY 2021</p>
+            <p class="type-label">Pure JS Chromium extension</p>
+            <img alt="YT-Shell on www.youtube.com" src="pics/yt_shell_1.png" class="cover">
+            <p>
+                YT-Shell is a browser extension that helps you stay focused while browsing YouTube. The extension
+                ensures that you are not distracted with the aim of spending your time on 'quality content'. It works by
+                injecting CSS and JS that hide things from the site. There are settings for blocking stuff including
+                blocking recommendations, hiding upcummies and thumbnails.
+            </p>
+            <a href="https://github.com/rijkvp/YT-Shell">GitHub</a>
+            <a href="https://microsoftedge.microsoft.com/addons/detail/ytshell/dicfaohifjibflnmnbokaeoakkdlkaij">Addon
+                Store Page</a>
+        </article>
+        <article>
+            <h2>Playgrounds Website</h2>
+            <p class="date-label">APR/MAY 2020</p>
+            <p class="type-label">PhP Website</p>
+            <img alt="Nature Zen on Steam" src="pics/zes_1.png" class="cover">
+            <p>
+                
+            </p>
+            <a href="https://github.com/rijkvp/Playground-Website">GitHub</a>
+            <a href="https://zoekeenspeeltuin.nl/">Visit Website (Dutch)</a>
+        </article>
+        <article>
+            <h2>Nature Zen</h2>
+            <p class="date-label">SEP 2018 - AUG 2019</p>
+            <p class="type-label">C++ with SFML</p>
+            <img alt="Nature Zen on Steam" src="pics/nature_zen_20190511_steam_linux.png" class="cover">
+            <p>
+                While learning C++ & Git I participated in a project creating a Steam game called Nature Zen.
+                In the game the player plays as god, manipulating the terrain tiles where animals live on.
+                Unfortunately the game never got finished but I was still a really cool project where I learned a lot
+                and about 13 people contributed to the project.
+            </p>
+            <a href="https://github.com/richelbilderbeek/djog_unos_2018">GitHub</a>
+            <a href="https://store.steampowered.com/app/1080960/Nature_Zen/">Steam Page</a>
+        </article>
+    </main>
+    {@inc/footer.rhc}
+</body>
+
+</html>

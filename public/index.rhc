@@ -1,69 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="utf-8">
-    <title>Minimal Website</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="styles.css">
-</head>
+{@inc/head.rhc}
 
 <body>
     <header>
         <h1>Rijk van Putten's Website</h1>
     </header>
-    <nav>
-        <a id="logo" href="index.html">@rijkvp</a>
-        <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="#">Blog</a></li>
-            <li><a href="#">About</a></li>
-            <li><a href="contact.html">Contact</a></li>
-        </ul>
-    </nav>
+    {@inc/nav.rhc}
     <main>
-        <h2>The advantages of having a minimal website</h2>
-        <p>Having a minimal website has several advantages. In this arcicle I will explain them. </p>
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed a dictum nunc. Duis vel neque vitae tortor
-            interdum rhoncus. Vestibulum placerat sagittis dui sed sodales. Nunc feugiat urna vestibulum placerat
-            lacinia. Phasellus eget lobortis enim,
-            id pulvinar leo. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed quis vehicula felis. Sed
-            blandit libero risus, quis semper sapien pharetra at. Praesent mauris nulla, maximus non nibh nec, eleifend
-            placerat enim. Phasellus posuere,
-            augue vitae euismod vestibulum, diam augue finibus ligula, nec fringilla leo erat sed lacus. Fusce lorem
-            nisl, mollis nec lobortis vel, malesuada vitae felis. Donec non sapien eu lectus pharetra scelerisque.
-            Mauris vehicula augue sed ipsum
-            imperdiet, et pretium nisl interdum. Etiam id mollis massa, nec cursus sem. Integer scelerisque justo eros,
-            id tristique massa facilisis bibendum. Aliquam egestas, enim quis malesuada facilisis, quam magna tincidunt
-            leo, non hendrerit nisi
-            tortor rutrum dui.
-            In hac habitasse platea dictumst. Aenean rutrum turpis cursus dolor interdum condimentum.
-            Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Integer quis libero
-            quam. Aenean efficitur
-            ullamcorper convallis. Morbi at ante sit amet purus iaculis placerat ac vel diam. Morbi finibus diam tortor.
-            In luctus molestie quam, eget lobortis ipsum ornare quis. Quisque vel vulputate tortor. Nulla ultricies
-            ultrices tortor sed auctor.
-            Phasellus quis massa tellus. Ut sed sollicitudin nibh. Donec eget feugiat sem. Integer vulputate erat arcu,
-            commodo ultrices erat pellentesque vitae. Aliquam posuere magna enim. Phasellus sit amet orci aliquet,
-            interdum diam quis, ultrices
-            tellus. Nunc aliquet urna elit, ac suscipit dui laoreet in. Aenean sollicitudin vestibulum nisi, a commodo
-            orci dignissim eu. Ut dapibus augue ac varius feugiat. Cras tempus erat vel lectus hendrerit aliquam.
-            Pellentesque vehicula eleifend
-            turpis et rhoncus.Cras sit amet metus ligula. Donec ut dapibus nulla. Phasellus imperdiet nunc vel
-            lacus
-            laoreet, nec interdum odio facilisis. Aliquam nisl sapien, elementum et interdum vitae, tincidunt quis quam.
-            Duis varius tincidunt orci
-            vitae pulvinar. Morbi vestibulum nisl eu venenatis porta. Cras dignissim sem et nisl hendrerit, in porttitor
-            lectus tempus. Ut non tempus metus, ut varius nibh. Mauris a sapien erat. Maecenas aliquet ante sit amet
-            nisl tempor varius. Vestibulum
-            vel dictum justo. Donec consectetur congue velit, sed dapibus elit mattis at. Suspendisse et ultricies
-            mauris. Curabitur a ultricies sem. Donec pharetra mauris mauris, sed convallis tortor finibus at.
-        </p>
+        <h2>My Website I guess</h2>
     </main>
-    <footer>
-        &copy; Copyright 2021 &middot; Rijk van Putten 
-    </footer>
-    <script> </script> <!-- Fixes CSS transitions in chromium browsers-->
+    {@inc/footer.rhc}
 </body>
 
 </html>
