@@ -33,7 +33,10 @@ async fn files(path: PathBuf) -> Option<FileResponse> {
         let index_path = Path::new(HOME_PAGE);
         return match read_content_path(&index_path).await {
             Ok(content) => Some(FileResponse::Content(content::Html(content))),
-            Err(err) => None,
+            Err(err) => {
+                println!("Failed to read page: {}", err);
+                None 
+            }
         }
     } else {
         if let Some(ext) = path.extension() {
@@ -68,7 +71,10 @@ async fn files(path: PathBuf) -> Option<FileResponse> {
 async fn read_content_path(path: &Path) -> Result<String, String> {
     for &ext in &EXTENSION_ORDER {
         let file_path = Path::new("public/").join(path.clone()).with_extension(ext);
+
+        println!("PATH IS: {}", file_path.display());
         if file_path.exists() {
+            println!("EXSISTS!!!");
             return read_content_file(&file_path).await;
         }
     }
@@ -108,16 +114,28 @@ async fn blog(file: PathBuf) -> Option<Html<String>> {
 }
 
 async fn read_file(path: &Path) -> Result<String, String> {
-    let file = File::open(path).await.ok();
-    if let Some(mut file) = file {
-        let mut contents = vec![];
-        if let Some(_) = file.read_to_end(&mut contents).await.ok() { 
-            if let Ok(text) =  String::from_utf8(contents) {
-                return Ok(text);
+    let file = File::open(path).await;
+    match file {
+        Ok(mut file) => {
+            let mut contents = vec![];
+            match file.read_to_end(&mut contents).await {
+                Ok(_) => {
+                    if let Ok(text) =  String::from_utf8(contents) {
+                        return Ok(text);
+                    }
+                    else {
+                        return Err("Failed to convert to UTF8".to_string());
+                    }
+                },
+                Err(err) => {   
+                    return Err(format!("Failed to read file: {}", err));
+                }
             }
+        },
+        Err(err) => {
+            return Err(format!("Failed to open file!\nMessage: {}\nPath: {}", err, path.display()));
         }
     }
-    Err("Something went wrong: TODO: better errors".to_string())
 }
 
 #[async_recursion]
