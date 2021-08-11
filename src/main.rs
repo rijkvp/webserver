@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
+use async_recursion::async_recursion;
 use rocket::{
     fs::NamedFile,
     http::Status,
@@ -11,9 +12,8 @@ use rocket::{
     tokio::{fs::File, io::AsyncReadExt},
     Request,
 };
-use std::path::{Path, PathBuf};
 use std::collections::HashMap;
-use async_recursion::async_recursion;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Responder)]
 pub enum FileResponse {
@@ -22,77 +22,75 @@ pub enum FileResponse {
     Redirect(Redirect),
 }
 
-
-const HOME_PAGE: &str = "home";
+const CONTENT_FOLDER: &str = "public/";
+const INDEX_ORDER: [&str; 2] = ["index", "home"];
 const EXTENSION_ORDER: [&str; 2] = ["rhc", "html"];
 
-#[get("/<path..>")]
-async fn files(path: PathBuf) -> Option<FileResponse> {
-    let path_str = path.to_str().unwrap(); 
-    if path_str.eq("") {
-        let index_path = Path::new(HOME_PAGE);
-        return match read_content_path(&index_path).await {
-            Ok(content) => Some(FileResponse::Content(content::Html(content))),
-            Err(err) => {
-                println!("Failed to read page: {}", err);
-                None 
-            }
+#[get("/<url..>")]
+async fn files(url: PathBuf) -> Option<FileResponse> {
+    let path = Path::new(CONTENT_FOLDER).join(url.clone());
+    // If path has an extension 
+    // Redirect if path is an rhc or html file otherwise response with regular file
+    if let Some(ext) = path.extension() {
+        if EXTENSION_ORDER.contains(&ext.to_str().unwrap()) {
+            let cleaned_path = path.with_extension("");
+            let path_string = format!("/{}", cleaned_path.to_str().unwrap());
+            return Some(FileResponse::Redirect(Redirect::to(path_string)));
         }
-    } else {
-        if let Some(ext) = path.extension() {
-            // Check if content ext & redirect to right path
-            if EXTENSION_ORDER.contains(&ext.to_str().unwrap()) {
-                let cleaned_path = path.with_extension("");
-                let path_string = format!("/{}", cleaned_path.to_str().unwrap());
-                return Some(FileResponse::Redirect(Redirect::to(path_string)));
-            }
-            // Regular file
-            let file = NamedFile::open(Path::new("public/").join(path)).await.ok();
-            if let Some(file) = file {
-                return Some(FileResponse::Template(file));
-            }
-        } else {
-            // No extension - search for extension
-            return match read_content_path(&path).await {
-                Ok(content) => {
-                    Some(FileResponse::Content(content::Html(content)))
-                },
-                Err(err) => {
-                    // TODO: Proper error handling (throw 500)
-                    println!("Error: {}", err);
-                    None 
-                },
-            }
-        }
-        None
-    }
-}
-
-async fn read_content_path(path: &Path) -> Result<String, String> {
-    for &ext in &EXTENSION_ORDER {
-        let file_path = Path::new("public/").join(path.clone()).with_extension(ext);
-
-        println!("PATH IS: {}", file_path.display());
-        if file_path.exists() {
-            println!("EXSISTS!!!");
-            return read_content_file(&file_path).await;
+        // Regular file
+        if let Some(file) = NamedFile::open(path).await.ok() {
+            return Some(FileResponse::Template(file));
         }
     }
-    Err(format!("No file found with path/url '{}'!", path.to_str().unwrap()))
+    // If path has No extension 
+    // Search for content (rhc, html) file as extension
+    else {
+        for ext in EXTENSION_ORDER {
+            let file_path = path.with_extension(ext);
+            if file_path.exists() {
+                println!("FOUND CONTENT {}", file_path.display());
+                return match read_content_file(&file_path).await {
+                    Ok(content) => Some(FileResponse::Content(content::Html(content))),
+                    Err(err) => {
+                        println!("Error while trying to read content file!\n{}\n", err);
+                        None
+                    }
+                };
+            }
+        }
+
+        if path.is_dir() {
+            for index_name in INDEX_ORDER {
+                for ext in EXTENSION_ORDER {
+                    let index_path = path.join(index_name).with_extension(ext);
+                    if index_path.exists() {
+                        println!("FOUND INDEX {}", index_path.display());
+                        println!("SOURCE: {}", url.display());
+                        return match read_content_file(&index_path).await {
+                            Ok(content) => Some(FileResponse::Content(content::Html(content))),
+                            Err(err) => {
+                                println!("Error while trying to read content file!\n{}\n", err);
+                                None
+                            }
+                        };
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 async fn read_content_file(path: &Path) -> Result<String, String> {
-    let ext = path.extension().unwrap().to_str().unwrap(); 
+    let ext = path.extension().unwrap().to_str().unwrap();
     return match ext {
-        "html" => {
-            match read_file(path).await {
-                Ok(data) => Ok(data),
-                Err(err) => Err(err),
-            }
-        }
+        "html" => match read_file(path).await {
+            Ok(data) => Ok(data),
+            Err(err) => Err(err),
+        },
         "rhc" => concatenate_rhc(path, &HashMap::new()).await,
         _ => Err(format!("Unknown extension '{}'!", ext)),
-    }
+    };
 }
 
 #[get("/blog/<file..>")]
@@ -105,7 +103,7 @@ async fn blog(file: PathBuf) -> Option<Html<String>> {
         if let Some(_) = file.read_to_end(&mut contents).await.ok() {
             if let Ok(md) = String::from_utf8(contents) {
                 let html = markdown::to_html(&md);
-                println!("Genrated HTML: {}", html);
+                println!("Generated HTML: {}", html);
                 return Some(content::Html(html));
             }
         }
@@ -120,20 +118,23 @@ async fn read_file(path: &Path) -> Result<String, String> {
             let mut contents = vec![];
             match file.read_to_end(&mut contents).await {
                 Ok(_) => {
-                    if let Ok(text) =  String::from_utf8(contents) {
+                    if let Ok(text) = String::from_utf8(contents) {
                         return Ok(text);
-                    }
-                    else {
+                    } else {
                         return Err("Failed to convert to UTF8".to_string());
                     }
-                },
-                Err(err) => {   
+                }
+                Err(err) => {
                     return Err(format!("Failed to read file: {}", err));
                 }
             }
-        },
+        }
         Err(err) => {
-            return Err(format!("Failed to open file!\nMessage: {}\nPath: {}", err, path.display()));
+            return Err(format!(
+                "Failed to open file!\nMessage: {}\nPath: {}",
+                err,
+                path.display()
+            ));
         }
     }
 }
@@ -145,7 +146,7 @@ async fn concatenate_rhc(path: &Path, values: &HashMap<String, String>) -> Resul
             let mut fmt_text = text.to_string();
             loop {
                 let mut found_start = false;
-                let mut found_end = false; 
+                let mut found_end = false;
                 let mut start_index = 0;
                 let mut end_index = 0;
                 for (i, c1) in fmt_text.chars().enumerate() {
@@ -161,32 +162,32 @@ async fn concatenate_rhc(path: &Path, values: &HashMap<String, String>) -> Resul
                         }
                         if !found_end {
                             return Err("Syntax error: no end character found!".to_string());
-                        }
-                        else {
+                        } else {
                             break;
                         }
                     }
-                } 
+                }
                 if !found_start {
                     break;
                 } else if found_start && found_end {
-                    let key = &fmt_text[start_index+1..end_index];
+                    let key = &fmt_text[start_index + 1..end_index];
                     let first_char = key.chars().nth(0).unwrap();
                     let start = &fmt_text[0..start_index];
-                    let end = &fmt_text[end_index+1..fmt_text.len()];
-                    
-                    println!("First char: {}, key: {}", first_char, key);
+                    let end = &fmt_text[end_index + 1..fmt_text.len()];
+
                     if first_char == '@' {
                         let file_ref = &key[1..key.len()];
-                        println!("Ref: {}, Path: {}", file_ref, path.display());
                         let nested_path = path.parent().unwrap().join(file_ref);
-                        println!("Nested path: {}", nested_path.display());
                         match concatenate_rhc(nested_path.as_path(), &values).await {
                             Ok(result) => {
                                 fmt_text = start.to_string() + result.as_str() + &end;
-                            },
+                            }
                             Err(err) => {
-                                return Err(format!("Error while concatenating '{}'!\n{}", nested_path.display(), err));
+                                return Err(format!(
+                                    "Error while concatenating '{}'!\n{}",
+                                    nested_path.display(),
+                                    err
+                                ));
                             }
                         }
                     } else {
@@ -194,29 +195,30 @@ async fn concatenate_rhc(path: &Path, values: &HashMap<String, String>) -> Resul
                             fmt_text = start.to_string() + value + &end;
                         } else {
                             return Err(format!("Key '{}' not found!", key).to_string());
-                        }   
+                        }
                     }
                 }
             }
             return Ok(fmt_text);
-        },
+        }
         Err(err) => {
-            return Err(format!("Something went wrong while reading the file: {}", err).to_string()); 
+            return Err(
+                format!("Something went wrong while reading the file: {}", err).to_string(),
+            );
         }
     }
 }
 
 fn get_error_msg(code: u16) -> &'static str {
     match code {
-        404 => { "Page not found!" },
-        500 => { "Server error!" },
-        _ => {
-            "Other error"
-        }
+        404 => "Page not found!",
+        500 => "Server error!",
+        _ => "Other error",
     }
 }
 
-#[catch(default)] async fn default_catcher(status: Status, _request: &Request<'_>) -> Html<String> {
+#[catch(default)]
+async fn default_catcher(status: Status, _request: &Request<'_>) -> Html<String> {
     let mut values = HashMap::new();
     let error_code = status.code;
     let error_message = get_error_msg(error_code);
@@ -226,10 +228,13 @@ fn get_error_msg(code: u16) -> &'static str {
     match html_output {
         Ok(html) => {
             return content::Html(html);
-        },
+        }
         Err(err) => {
-            println!("Error while formatting error page: {}", err);
-            return content::Html(format!("Error code: {}, message: {}", error_code, error_message));
+            println!("Error while formatting error page!\n{}\n", err);
+            return content::Html(format!(
+                "Error code: {}, message: {}",
+                error_code, error_message
+            ));
         }
     }
 }
