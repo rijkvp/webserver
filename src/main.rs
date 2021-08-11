@@ -48,7 +48,6 @@ async fn files(url: PathBuf) -> Option<FileResponse> {
         for ext in EXTENSION_ORDER {
             let file_path = path.with_extension(ext);
             if file_path.exists() {
-                println!("FOUND CONTENT {}", file_path.display());
                 return match read_content_file(&file_path).await {
                     Ok(content) => Some(FileResponse::Content(content::Html(content))),
                     Err(err) => {
@@ -64,8 +63,6 @@ async fn files(url: PathBuf) -> Option<FileResponse> {
                 for ext in EXTENSION_ORDER {
                     let index_path = path.join(index_name).with_extension(ext);
                     if index_path.exists() {
-                        println!("FOUND INDEX {}", index_path.display());
-                        println!("SOURCE: {}", url.display());
                         return match read_content_file(&index_path).await {
                             Ok(content) => Some(FileResponse::Content(content::Html(content))),
                             Err(err) => {
