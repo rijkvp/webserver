@@ -1,22 +1,26 @@
 # RHC
 
-@rijkvp's simple Html Concatenator
+**R**ijks **H**tml **C**oncatenator.
 
-## Named dynamic
+A simple markup format to combine HTML content from multiple files.
+The webserver uses the `.rhc` extension the differentiate between files.
+
+NOTE: This format is used for on my website and should not be used in real products.
+
+## Markup reference
+
+Sections are marked with `{` and `}`. The sections will be replaced with other content.
+
+## Keys
+
+The value of keys can be set in code.
+
 `{#my_key}`
 
 ## Files
-`{@footer.rhc}`
-`{@header.rhc}`
 
-## Lists
-`
-<h2>Blog Posts</h2>
-{^blog_posts
-<article>
-<h3>~post_name~</h3>
-<a href="~post_link~">Read post</a>
-</article>
-}
-`
+The path is allways relative to the file.
+
+`{@inc/header.rhc}`
+`{@footer.rhc}`
 
