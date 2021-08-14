@@ -1,0 +1,3 @@
+[submodule "public"]
+	path = public
+	url = https://github.com/rijkvp/website_content.git
