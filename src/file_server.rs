@@ -84,4 +84,3 @@ async fn read_content_file(path: &Path) -> Result<String, String> {
         _ => Err(format!("Unknown extension '{}'!", ext)),
     };
 }
-
