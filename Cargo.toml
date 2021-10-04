@@ -1,6 +1,10 @@
 [package]
 name = "webserver"
+<<<<<<< HEAD
 version = "0.2.0"
+=======
+version = "0.1.0"
+>>>>>>> e496a3c36664fd5737b337841622efd657504199
 edition = "2018"
 
 [dependencies]

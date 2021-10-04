@@ -1728,11 +1728,19 @@ checksum = "d7cff876b8f18eed75a66cf49b65e7f967cb354a7aa16003fb55dbfd25b44b4f"
 
 [[package]]
 name = "webserver"
+<<<<<<< HEAD
 version = "0.2.0"
 dependencies = [
  "lazy_static",
  "rocket",
  "tera",
+=======
+version = "0.1.0"
+dependencies = [
+ "async-recursion",
+ "markdown",
+ "rocket",
+>>>>>>> e496a3c36664fd5737b337841622efd657504199
 ]
 
 [[package]]
