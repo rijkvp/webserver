@@ -1,10 +1,9 @@
 #[macro_use]
 extern crate rocket;
 
-mod concatenator;
 mod error_catcher;
 mod file_server;
-mod file_util;
+mod template_engine;
 
 use error_catcher::catch_error;
 use file_server::files;

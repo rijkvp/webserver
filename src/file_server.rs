@@ -1,86 +1,88 @@
+use crate::template_engine::TEMPLATES;
 use rocket::{
     fs::NamedFile,
+    http::Status,
     response::{
         content::{self, Html},
         Redirect,
     },
 };
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use tera::Context;
 
-use crate::{concatenator::concatenate_rhc, file_util::read_file};
+pub const CONTENT_FOLDER: &str = "public/";
+const INDEX_ORDER: [&str; 2] = ["index", "home"];
+const FILE_EXT: &str = "html";
 
 #[derive(Debug, Responder)]
 pub enum FileResponse {
     Content(Html<String>),
-    Template(NamedFile),
+    File(NamedFile),
     Redirect(Redirect),
+    StatusCode(Status),
 }
 
-const CONTENT_FOLDER: &str = "public/";
-const INDEX_ORDER: [&str; 2] = ["index", "home"];
-const EXTENSION_ORDER: [&str; 2] = ["rhc", "html"];
-
 #[get("/<url_path..>")]
-pub async fn files(url_path: PathBuf) -> Option<FileResponse> {
+pub async fn files(url_path: PathBuf) -> FileResponse {
     let path = Path::new(CONTENT_FOLDER).join(url_path.clone());
-    // If path has an extension 
-    // Redirect if path is an rhc or html file otherwise response with regular file
+    // If path has an extension
+    // Redirect if path is html file otherwise response with regular file
     if let Some(ext) = path.extension() {
-        if EXTENSION_ORDER.contains(&ext.to_str().unwrap()) {
-            let cleaned_path = path.with_extension("");
+        if ext == FILE_EXT {
+            let cleaned_path = url_path.with_extension("");
             let path_string = format!("/{}", cleaned_path.to_str().unwrap());
-            return Some(FileResponse::Redirect(Redirect::to(path_string)));
+            return FileResponse::Redirect(Redirect::to(path_string));
         }
         // Regular file
         if let Some(file) = NamedFile::open(path).await.ok() {
-            return Some(FileResponse::Template(file));
+            return FileResponse::File(file);
         }
     }
-    // If path has No extension 
-    // Search for content (rhc, html) file as extension
+    // If path has No extension
+    // Search for content html file as extension and run template engine
     else {
-        for ext in EXTENSION_ORDER {
-            let file_path = path.with_extension(ext);
-            if file_path.exists() {
-                return match read_content_file(&file_path).await {
-                    Ok(content) => Some(FileResponse::Content(content::Html(content))),
-                    Err(err) => {
-                        println!("Error while trying to read content file!\n{}\n", err);
-                        None
-                    }
-                };
-            }
+        let file_path = path.with_extension(FILE_EXT);
+        if file_path.exists() {
+            return match read_content_file(&file_path).await {
+                Ok(content) => FileResponse::Content(content::Html(content)),
+                Err(err) => {
+                    eprintln!("Error while trying to read content file!\n{}\n", err);
+                    FileResponse::StatusCode(Status::InternalServerError)
+                }
+            };
         }
 
         if path.is_dir() {
             for index_name in INDEX_ORDER {
-                for ext in EXTENSION_ORDER {
-                    let index_path = path.join(index_name).with_extension(ext);
-                    if index_path.exists() {
-                        return match read_content_file(&index_path).await {
-                            Ok(content) => Some(FileResponse::Content(content::Html(content))),
-                            Err(err) => {
-                                println!("Error while trying to read content file!\n{}\n", err);
-                                None
-                            }
-                        };
-                    }
+                let index_path = path.join(index_name).with_extension(FILE_EXT);
+                if index_path.exists() {
+                    return match read_content_file(&index_path).await {
+                        Ok(content) => FileResponse::Content(content::Html(content)),
+                        Err(err) => {
+                            eprintln!("Error while trying to read content file!\n{}\n", err);
+                            FileResponse::StatusCode(Status::InternalServerError)
+                        }
+                    };
                 }
             }
         }
     }
-    None
+
+    // Return 404 if nothing found
+    FileResponse::StatusCode(Status::NotFound)
 }
 
 async fn read_content_file(path: &Path) -> Result<String, String> {
-    let ext = path.extension().unwrap().to_str().unwrap();
-    return match ext {
-        "html" => match read_file(path).await {
-            Ok(data) => Ok(data),
-            Err(err) => Err(err),
-        },
-        "rhc" => concatenate_rhc(path, &HashMap::new()).await,
-        _ => Err(format!("Unknown extension '{}'!", ext)),
-    };
+    let mut child_path = PathBuf::new();
+    let mut parent = true;
+    for node in path.iter() {
+        if parent {
+            parent = false;
+        } else {
+            child_path.push(node);
+        }
+    }
+    return TEMPLATES
+        .render(child_path.to_str().unwrap(), &Context::new())
+        .map_err(|err| err.to_string());
 }
