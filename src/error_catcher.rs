@@ -1,4 +1,3 @@
-use crate::template_engine::TEMPLATES;
 use rocket::{
     http::Status,
     response::content::{self, Html},
@@ -7,8 +6,10 @@ use rocket::{
 use std::path::Path;
 use tera::Context;
 
+use crate::config::ServerConfig;
+
 #[catch(default)]
-pub async fn catch_error(status: Status, _request: &Request<'_>) -> (Status, Html<String>) {
+pub async fn catch_error(status: Status, _request: &Request<'_>, config: &State<ServerConfig>) -> (Status, Html<String>) {
     let mut context = Context::new();
     context.insert("status_code", &status.code);
     context.insert("reason", status.reason_lossy());

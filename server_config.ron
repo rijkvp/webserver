@@ -1,0 +1,5 @@
+(
+    target_dir: "public/",
+    index_file: "home.html",
+    content_ext: "html",
+)

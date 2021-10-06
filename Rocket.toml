@@ -1,5 +1,0 @@
-[debug]
-port=8000
-
-[release]
-port=8000
