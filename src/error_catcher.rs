@@ -8,6 +8,7 @@ use tera::Context;
 
 use crate::config::ServerConfig;
 
+// TODO: Make error handler work with new state management
 #[catch(default)]
 pub async fn catch_error(status: Status, _request: &Request<'_>, config: &State<ServerConfig>) -> (Status, Html<String>) {
     let mut context = Context::new();
