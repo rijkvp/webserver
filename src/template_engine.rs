@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use crate::config::ServerConfig;
 use tera::{Context, Tera};
 
+#[derive(Clone)]
 pub struct TemplateEngine {
     tera: Tera,
 }

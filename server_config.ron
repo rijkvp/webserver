@@ -1,5 +1,7 @@
 (
     target_dir: "public/",
     index_file: "home.html",
+    error_template: "inc/error.html",
     content_ext: "html",
+    ignored_paths: ["inc/"]
 )

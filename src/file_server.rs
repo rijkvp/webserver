@@ -7,7 +7,10 @@ use rocket::{
     },
     State,
 };
-use std::{ffi::OsString, path::{Path, PathBuf}};
+use std::{
+    ffi::OsString,
+    path::{Path, PathBuf},
+};
 use tera::Context;
 
 use crate::{config::ServerConfig, template_engine::TemplateEngine};
@@ -26,6 +29,13 @@ pub async fn files(
     config: &State<ServerConfig>,
     template_engine: &State<TemplateEngine>,
 ) -> FileResponse {
+    // Check if file doesn't start with an ignored path
+    for dir in &config.ignored_paths {
+        if url_path.starts_with(dir) {
+            return FileResponse::StatusCode(Status::NotFound);
+        }
+    }
+
     let abs_path = Path::new(&config.target_dir).join(url_path.clone());
 
     // If url has an extension
@@ -45,19 +55,18 @@ pub async fn files(
     else {
         // Return rendered file if exists
         if let Some(relative_path) = {
+            let mut result = None;
             let content_file = abs_path.with_extension(&config.content_ext);
             if content_file.exists() {
-                Some(url_path.with_extension(&config.content_ext))
-            } else if abs_path.is_dir() {
+                result = Some(url_path.with_extension(&config.content_ext))
+            }
+            else if abs_path.is_dir() {
                 let index_path = abs_path.join(&config.index_file);
                 if index_path.exists() {
-                    Some(url_path.join(&config.index_file))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+                    result = Some(url_path.join(&config.index_file))
+                } 
+            } 
+            result
         } {
             return match template_engine.render_file(relative_path, &Context::new()) {
                 Ok(content) => FileResponse::Content(content::Html(content)),
