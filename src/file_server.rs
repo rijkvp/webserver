@@ -7,7 +7,7 @@ use rocket::{
     },
     State,
 };
-use std::path::{Path, PathBuf};
+use std::{ffi::OsString, path::{Path, PathBuf}};
 use tera::Context;
 
 use crate::{config::ServerConfig, template_engine::TemplateEngine};
@@ -31,7 +31,7 @@ pub async fn files(
     // If url has an extension
     if let Some(ext) = url_path.extension() {
         // Redirect if url has content extension
-        if ext.to_str().unwrap() == config.content_ext {
+        if ext == OsString::from(&config.content_ext) {
             let clean_url = url_path.with_extension("");
             let url_string = format!("/{}", clean_url.display());
             return FileResponse::Redirect(Redirect::to(url_string));

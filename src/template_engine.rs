@@ -27,8 +27,6 @@ impl TemplateEngine {
     }
 
     pub fn render_file(&self, path: PathBuf, context: &Context) -> Result<String, String> {
-        println!("RENDER {}", path.display());
-
         if let Some(path_str) = path.to_str() {
             self.tera
                 .render(path_str, context)
