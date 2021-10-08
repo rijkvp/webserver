@@ -5,8 +5,10 @@ use serde::Deserialize;
 #[derive(Deserialize, Clone)]
 pub struct GenDirectory {
     pub source_dir: PathBuf,
-    pub target_dir: PathBuf,
-    pub template_file: PathBuf,
+    pub target_url: PathBuf,
+    pub content_template: PathBuf,
+    pub index_template: PathBuf,
+    pub index_url: PathBuf,
 }
 
 #[derive(Deserialize, Clone)]

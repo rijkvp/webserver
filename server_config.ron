@@ -7,8 +7,10 @@
     gen_dirs: [
         (
             source_dir: "gen/projects",
-            target_dir: "projects",
-            template_file: "templates/project.html",
+            target_url: "projects",
+            content_template: "templates/project.html",
+            index_template: "projects.html",
+            index_url: "projects",
         )
     ]
 )
