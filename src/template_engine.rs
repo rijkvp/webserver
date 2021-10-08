@@ -36,4 +36,15 @@ impl TemplateEngine {
             Err("Failed to convert path to string!".to_string())
         }
     }
+
+    pub fn render_string(
+        &mut self,
+        template: &str,
+        context: &Context,
+    ) -> Result<String, String> {
+        self
+            .tera
+            .render_str(template, context)
+            .map_err(|err| format!("Error while rendering template: {}", err.to_string()))
+    }
 }

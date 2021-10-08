@@ -1,7 +1,14 @@
 (
     target_dir: "public/",
     index_file: "home.html",
-    error_template: "inc/error.html",
+    error_template: "templates/error.html",
     content_ext: "html",
-    ignored_paths: ["inc/"]
+    ignored_paths: ["templates/", "gen/"],
+    gen_dirs: [
+        (
+            source_dir: "gen/projects",
+            target_dir: "projects",
+            template_file: "templates/project.html",
+        )
+    ]
 )

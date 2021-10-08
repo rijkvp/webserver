@@ -1732,7 +1732,6 @@ dependencies = [
  "ron",
  "serde",
  "tera",
- "tokio",
 ]
 
 [[package]]

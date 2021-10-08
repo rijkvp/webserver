@@ -5,7 +5,6 @@ edition = "2018"
 
 [dependencies]
 rocket = "0.5.0-rc.1"
-tokio = "1.12"
 tera = "1.1"
 serde = "1.0"
 ron = "0.6"
