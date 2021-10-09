@@ -12,3 +12,4 @@ ron = "0.6"
 chrono = { version = "0.4", features = [ "serde" ] }
 rss = { version = "1.10", features = [ "with-serde" ] }
 dirs = "4"
+uuid = { version = "0.8", features = [ "v5" ] }

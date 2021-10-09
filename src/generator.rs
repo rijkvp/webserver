@@ -1,8 +1,10 @@
 use crate::{config::ServerConfig, template_engine::TemplateEngine};
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate};
+use rss::GuidBuilder;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::PathBuf};
 use tera::Context;
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Link {
@@ -62,6 +64,23 @@ pub struct Generator {
 struct EmptyFeedIndex {
     pub feed_url: Option<PathBuf>,
     pub items: Vec<FeedItem>,
+}
+
+impl FeedItem {
+    fn to_rss_item(&self) -> rss::Item {
+        let date = self.date.format("%a, %d %b %Y 00:00:00 UTC").to_string();
+        let uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, self.title.as_bytes())
+            .to_hyphenated()
+            .to_string();
+        let guid = GuidBuilder::default().value(uuid).build().unwrap();
+        rss::ItemBuilder::default()
+            .title(self.title.clone())
+            .pub_date(date)
+            .content(self.content.clone())
+            .guid(guid)
+            .build()
+            .unwrap()
+    }
 }
 
 #[derive(Serialize)]
@@ -187,15 +206,7 @@ impl Generator {
             if let Some(rss_feed_url) = &feed_cfg.rss_feed_url {
                 let mut rss_items = Vec::<rss::Item>::new();
                 for (_, item) in &feed_items {
-                    rss_items.push(
-                        rss::ItemBuilder::default()
-                            .title(item.title.clone())
-                            .pub_date(item.date.to_string())
-                            .description(item.content.clone())
-                            .content(item.content.clone())
-                            .build()
-                            .unwrap(),
-                    )
+                    rss_items.push(item.to_rss_item());
                 }
 
                 let channel = rss::ChannelBuilder::default()
