@@ -31,7 +31,7 @@ impl TemplateEngine {
         if let Some(path_str) = path.to_str() {
             self.tera
                 .render(path_str, context)
-                .map_err(|err| format!("Error while rendering template: {}", err.to_string()))
+                .map_err(|err| format!("Template rendering error (File): {}", err.to_string()))
         } else {
             Err("Failed to convert path to string!".to_string())
         }
@@ -45,6 +45,6 @@ impl TemplateEngine {
         self
             .tera
             .render_str(template, context)
-            .map_err(|err| format!("Error while rendering template: {}", err.to_string()))
+            .map_err(|err| format!("Template rendering error (String): {}", err.to_string()))
     }
 }

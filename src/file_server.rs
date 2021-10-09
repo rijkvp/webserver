@@ -1,23 +1,14 @@
-use rocket::{
-    fs::NamedFile,
-    http::Status,
-    response::{
-        content::{self, Html},
+use rocket::{State, fs::NamedFile, http::{ContentType, Status}, response::{
         Redirect,
-    },
-    State,
-};
-use std::{
-    ffi::OsString,
-    path::{Path, PathBuf},
-};
+    }};
+use std::{ffi::OsString, path::{Path, PathBuf}};
 use tera::Context;
 
 use crate::{config::ServerConfig, generator::Generator, template_engine::TemplateEngine};
 
 #[derive(Debug, Responder)]
 pub enum FileResponse {
-    Content(Html<String>),
+    Content((ContentType, String)),
     File(NamedFile),
     Redirect(Redirect),
     StatusCode(Status),
@@ -39,7 +30,15 @@ pub async fn files(
 
     // Check if url is a generated template
     if let Some(content) = generator.get(&url_path) {
-        return FileResponse::Content(content::Html(content.to_string()));
+        if let Some(ext) = url_path.extension() {
+            if let Some(content_type) = ContentType::from_extension(ext.to_str().unwrap()) {
+                return FileResponse::Content((content_type, content.to_string()));
+            } else {
+                return FileResponse::Content((ContentType::Text, content.to_string()));
+            }
+        } else {
+            return FileResponse::Content((ContentType::HTML, content.to_string()));
+        }
     }
 
     let abs_path = Path::new(&config.target_dir).join(url_path.clone());
@@ -74,7 +73,7 @@ pub async fn files(
             result
         } {
             return match template_engine.render_file(relative_path, &Context::new()) {
-                Ok(content) => FileResponse::Content(content::Html(content)),
+                Ok(content) => FileResponse::Content((ContentType::HTML, content)),
                 Err(err) => {
                     eprintln!("Error while rendering file!\n{}", err);
                     FileResponse::StatusCode(Status::InternalServerError)

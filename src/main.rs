@@ -16,13 +16,32 @@ use crate::{
 
 #[launch]
 fn rocket() -> _ {
-    let config = ServerConfig::load().expect("Error while reading config file!");
+    let config = match ServerConfig::load() {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("Failed to load configuration file!");
+            eprintln!("Error: {}", err);
+            std::process::exit(1);
+        },
+    };
 
-    let mut template_engine =
-        TemplateEngine::load(&config).expect("Failed to initialize template engine!");
+    let mut template_engine = match TemplateEngine::load(&config) {
+        Ok(template_engine) => template_engine,
+        Err(err) => {
+            eprintln!("Failed to load template engine!");
+            eprintln!("Error: {}", err);
+            std::process::exit(1);
+        },
+    };
 
-    let generator =
-        Generator::generate(&config, &mut template_engine).expect("Failed to generate templates!");
+    let generator = match  Generator::generate(&config, &mut template_engine){
+        Ok(generator) => generator,
+        Err(err) => {
+            eprintln!("Failed to generate feeds!");
+            eprintln!("Error: {}", err);
+            std::process::exit(1);
+        },
+    };  
 
     rocket::build()
         .register(

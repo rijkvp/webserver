@@ -4,20 +4,20 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::PathBuf};
 use tera::Context;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct Link {
     content: String,
     url: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct Image {
     alt: String,
     file_name: String,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Item {
+#[derive(Serialize, Deserialize, Clone)]
+struct FeedItem {
     title: String,
     subtitle: String,
     #[serde(with = "date_format")]
@@ -59,19 +59,15 @@ pub struct Generator {
 }
 
 #[derive(Serialize)]
-struct ItemListings {
-    pub list: Vec<(PathBuf, Item)>,
+struct EmptyFeedIndex {
+    pub feed_url: Option<PathBuf>,
+    pub items: Vec<FeedItem>,
 }
 
-impl ItemListings {
-    pub fn new() -> Self {
-        Self { list: Vec::new() }
-    }
-
-    pub fn sort(&mut self) {
-        // Sort ascending
-        self.list.sort_by(|a, b| b.1.date.cmp(&a.1.date));
-    }
+#[derive(Serialize)]
+struct ContentFeedIndex {
+    pub feed_url: Option<PathBuf>,
+    pub items: Vec<(PathBuf, FeedItem)>,
 }
 
 impl Generator {
@@ -80,35 +76,27 @@ impl Generator {
         template_engine: &mut TemplateEngine,
     ) -> Result<Self, String> {
         let mut files = HashMap::new();
-        for dir in &config.gen_dirs {
-            let mut item_listsings = ItemListings::new();
-            let template = fs::read_to_string(config.target_dir.join(&dir.content_template))
-                .map_err(|err| format!("Failed to load template file: {}", err.to_string()))?;
-            let index_template = fs::read_to_string(config.target_dir.join(&dir.index_template))
-                .map_err(|err| {
-                    format!("Failed to load index template file: {}", err.to_string())
-                })?;
-            let source_dir = config.target_dir.join(&dir.source_dir);
+
+        for feed_cfg in &config.feeds {
+            let source_dir = config.target_dir.join(&feed_cfg.source_dir);
+            let mut feed_items = Vec::<(String, FeedItem)>::new();
+
             if source_dir.is_dir() {
                 for file in fs::read_dir(&source_dir).map_err(|err| err.to_string())? {
                     let file = file.map_err(|err| err.to_string())?;
                     let path = file.path();
                     if !path.is_dir() {
                         let content = fs::read_to_string(&path).map_err(|err| err.to_string())?;
-                        let item = ron::from_str::<Item>(&content).map_err(|err| {
+                        let item = ron::from_str::<FeedItem>(&content).map_err(|err| {
                             format!(
                                 "Failed to deserialize file '{}': {}",
                                 path.display(),
                                 err.to_string(),
                             )
                         })?;
-                        let context =
-                            Context::from_serialize(&item).map_err(|err| err.to_string())?;
-                        let result = template_engine.render_string(&template, &context)?;
+
                         if let Some(file_name) = &path.file_stem() {
-                            let result_path = dir.target_url.join(PathBuf::from(file_name));
-                            item_listsings.list.push((result_path.clone(), item));
-                            files.insert(result_path, result);
+                            feed_items.push((file_name.to_string_lossy().to_string(), item));
                         } else {
                             return Err(format!(
                                 "Failed to get file stem from path: {}",
@@ -119,11 +107,105 @@ impl Generator {
                 }
             }
 
-            item_listsings.sort();
-            let items_ctx =
-                Context::from_serialize(item_listsings).map_err(|err| err.to_string())?;
-            let index_content = template_engine.render_string(&index_template, &items_ctx)?;
-            files.insert(dir.index_url.clone(), index_content);
+            // Sort the feed ascending by
+            feed_items.sort_by(|a, b| b.1.date.cmp(&a.1.date));
+
+            // Generate content
+            if let Some(content_output) = &feed_cfg.content_output {
+                let content_template = fs::read_to_string(
+                    config.target_dir.join(&content_output.template),
+                )
+                .map_err(|err| {
+                    format!(
+                        "Failed to load template file '{}': {}",
+                        &content_output.template.display(),
+                        err.to_string()
+                    )
+                })?;
+                for (file_name, item) in &feed_items {
+                    let context = Context::from_serialize(&item).map_err(|err| err.to_string())?;
+                    let rendered_content = template_engine
+                        .render_string(&content_template, &context)
+                        .map_err(|err| {
+                            format!(
+                                "Failed to render content template '{}': {}",
+                                &content_output.template.display(),
+                                err.to_string()
+                            )
+                        })?;
+                    let path = content_output.link.join(file_name);
+                    files.insert(path, rendered_content);
+                }
+            }
+
+            // Generate index
+            if let Some(index_output) = &feed_cfg.index_output {
+                let index_template =
+                    fs::read_to_string(config.target_dir.join(&index_output.template)).map_err(
+                        |err| format!("Failed to load index template file: {}", err.to_string()),
+                    )?;
+
+                let index_context = {
+                    if let Some(_) = feed_cfg.content_output {
+                        let items: Vec<(PathBuf, FeedItem)> = feed_items
+                            .iter()
+                            .map(|(file_name, item)| {
+                                let path = PathBuf::from(file_name);
+                                (path, item.clone())
+                            })
+                            .collect();
+                        let index = ContentFeedIndex {
+                            feed_url: feed_cfg.rss_feed_url.clone(),
+                            items,
+                        };
+                        Context::from_serialize(&index).map_err(|err| err.to_string())?
+                    } else {
+                        let items: Vec<FeedItem> =
+                            feed_items.iter().map(|(_, item)| item.clone()).collect();
+                        let index = EmptyFeedIndex {
+                            feed_url: feed_cfg.rss_feed_url.clone(),
+                            items,
+                        };
+                        Context::from_serialize(&index).map_err(|err| err.to_string())?
+                    }
+                };
+                let index_content = template_engine
+                    .render_string(&index_template, &index_context)
+                    .map_err(|err| {
+                        format!(
+                            "Failed to render index template '{}': {}",
+                            &index_output.template.display(),
+                            err.to_string()
+                        )
+                    })?;
+                files.insert(index_output.link.clone(), index_content);
+            }
+
+            // Generate RSS feed
+            if let Some(rss_feed_url) = &feed_cfg.rss_feed_url {
+                let mut rss_items = Vec::<rss::Item>::new();
+                for (_, item) in &feed_items {
+                    rss_items.push(
+                        rss::ItemBuilder::default()
+                            .title(item.title.clone())
+                            .pub_date(item.date.to_string())
+                            .description(item.content.clone())
+                            .content(item.content.clone())
+                            .build()
+                            .unwrap(),
+                    )
+                }
+
+                let channel = rss::ChannelBuilder::default()
+                    .title(&feed_cfg.title)
+                    .description(&feed_cfg.description)
+                    .link(&feed_cfg.link)
+                    .items(rss_items)
+                    .build()
+                    .unwrap();
+                let rss_str = channel.to_string();
+                files.insert(rss_feed_url.clone(), rss_str);
+            }
         }
         Ok(Self { files })
     }
