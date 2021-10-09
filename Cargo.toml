@@ -7,6 +7,7 @@ edition = "2018"
 rocket = "0.5.0-rc.1"
 tera = "1.1"
 serde = "1.0"
+serde_yaml = "0.8"
 ron = "0.6"
 chrono = { version = "0.4", features = [ "serde" ] }
 rss = { version = "1.10", features = [ "with-serde" ] }

@@ -87,7 +87,7 @@ impl Generator {
                     let path = file.path();
                     if !path.is_dir() {
                         let content = fs::read_to_string(&path).map_err(|err| err.to_string())?;
-                        let item = ron::from_str::<FeedItem>(&content).map_err(|err| {
+                        let item = serde_yaml::from_str::<FeedItem>(&content).map_err(|err| {
                             format!(
                                 "Failed to deserialize file '{}': {}",
                                 path.display(),
@@ -152,7 +152,7 @@ impl Generator {
                         let items: Vec<(PathBuf, FeedItem)> = feed_items
                             .iter()
                             .map(|(file_name, item)| {
-                                let path = PathBuf::from(file_name);
+                                let path = index_output.link.join(file_name);
                                 (path, item.clone())
                             })
                             .collect();
