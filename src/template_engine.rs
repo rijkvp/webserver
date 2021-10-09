@@ -10,12 +10,17 @@ pub struct TemplateEngine {
 
 impl TemplateEngine {
     pub fn load(config: &ServerConfig) -> Result<Self, String> {
-        let mut tera = Tera::new(&format!(
-            "{}**/*.{}",
+        let dirs = format!(
+            "{}/**/*.{}",
             config.target_dir.to_string_lossy(),
             config.content_ext
-        ))
-        .map_err(|err| format!("Failed to compile templates!\nParsing error(s): {}", err))?;
+        );
+        let mut tera = Tera::new(&dirs).map_err(|err| {
+            format!(
+                "Failed to compile templates!\nParsing error(s): {}\nDirs: {}",
+                err, dirs
+            )
+        })?;
 
         tera.autoescape_on(vec![]);
 
@@ -37,13 +42,8 @@ impl TemplateEngine {
         }
     }
 
-    pub fn render_string(
-        &mut self,
-        template: &str,
-        context: &Context,
-    ) -> Result<String, String> {
-        self
-            .tera
+    pub fn render_string(&mut self, template: &str, context: &Context) -> Result<String, String> {
+        self.tera
             .render_str(template, context)
             .map_err(|err| format!("Template rendering error (String): {}", err.to_string()))
     }

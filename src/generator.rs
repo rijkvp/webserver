@@ -112,13 +112,11 @@ impl Generator {
 
             // Generate content
             if let Some(content_output) = &feed_cfg.content_output {
-                let content_template = fs::read_to_string(
-                    config.target_dir.join(&content_output.template),
-                )
-                .map_err(|err| {
+                let template_path = config.target_dir.join(&content_output.template);
+                let content_template = fs::read_to_string(&template_path).map_err(|err| {
                     format!(
                         "Failed to load template file '{}': {}",
-                        &content_output.template.display(),
+                        &template_path.display(),
                         err.to_string()
                     )
                 })?;
@@ -140,10 +138,14 @@ impl Generator {
 
             // Generate index
             if let Some(index_output) = &feed_cfg.index_output {
-                let index_template =
-                    fs::read_to_string(config.target_dir.join(&index_output.template)).map_err(
-                        |err| format!("Failed to load index template file: {}", err.to_string()),
-                    )?;
+                let template_path = config.target_dir.join(&index_output.template);
+                let index_template = fs::read_to_string(&template_path).map_err(|err| {
+                    format!(
+                        "Failed to load index template file '{}': {}",
+                        &template_path.display(),
+                        err.to_string()
+                    )
+                })?;
 
                 let index_context = {
                     if let Some(_) = feed_cfg.content_output {

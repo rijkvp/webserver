@@ -2,9 +2,6 @@ use std::{fs, path::PathBuf};
 
 use serde::Deserialize;
 
-const CONFIG_SUBDIR: &str = "webserver";
-const CONFIG_FILE: &str = "server_config.ron";
-
 #[derive(Deserialize, Clone)]
 pub struct FeedOutput {
     pub template: PathBuf,
@@ -38,15 +35,16 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-    pub fn load() -> Result<Self, String> {
-        if let Some(config_dir) = dirs::config_dir() {
-            let path = config_dir.join(CONFIG_SUBDIR).join(CONFIG_FILE);
-            let config_str = fs::read_to_string(&path)
-                .map_err(|err| format!("Failed to read config file: {}\nPath: {}", err, &path.display()))?;
-            let config = ron::from_str::<ServerConfig>(&config_str)
-                .map_err(|err| format!("Failed to deserialize config file: {}", err))?;
-            return Ok(config);
-        }
-        Err("Failed to get config dir.".to_owned())
+    pub fn load(path: PathBuf) -> Result<Self, String> {
+        let config_str = fs::read_to_string(&path).map_err(|err| {
+            format!(
+                "Failed to read config file: {}\nPath: {}",
+                err,
+                &path.display()
+            )
+        })?;
+        let config = ron::from_str::<ServerConfig>(&config_str)
+            .map_err(|err| format!("Failed to deserialize config file: {}", err))?;
+        Ok(config)
     }
 }
