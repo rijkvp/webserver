@@ -5,6 +5,7 @@ mod config;
 mod error_handler;
 mod file_server;
 mod generator;
+mod rss;
 mod template_engine;
 
 use crate::{

@@ -1,34 +1,32 @@
-use crate::{config::ServerConfig, template_engine::TemplateEngine};
-use chrono::{DateTime, NaiveDate};
-use rss::GuidBuilder;
+use crate::{config::ServerConfig, rss::feed_items_to_rss, template_engine::TemplateEngine};
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::PathBuf};
 use tera::Context;
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
-struct Link {
+struct FeedLink {
     content: String,
     url: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct Image {
+struct FeedImage {
     alt: String,
     file_name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct FeedItem {
-    title: String,
+pub struct FeedItem {
+    pub title: String,
     subtitle: String,
     #[serde(with = "date_format")]
-    date: NaiveDate,
+    pub date: NaiveDate,
     date_label: String,
     tags: Vec<String>,
-    image: Image,
-    content: String,
-    links: Vec<Link>,
+    image: FeedImage,
+    pub content: String,
+    links: Vec<FeedLink>,
 }
 
 mod date_format {
@@ -64,23 +62,6 @@ pub struct Generator {
 struct EmptyFeedIndex {
     pub feed_url: Option<PathBuf>,
     pub items: Vec<FeedItem>,
-}
-
-impl FeedItem {
-    fn to_rss_item(&self) -> rss::Item {
-        let date = self.date.format("%a, %d %b %Y 00:00:00 UTC").to_string();
-        let uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, self.title.as_bytes())
-            .to_hyphenated()
-            .to_string();
-        let guid = GuidBuilder::default().value(uuid).build().unwrap();
-        rss::ItemBuilder::default()
-            .title(self.title.clone())
-            .pub_date(date)
-            .content(self.content.clone())
-            .guid(guid)
-            .build()
-            .unwrap()
-    }
 }
 
 #[derive(Serialize)]
@@ -204,19 +185,14 @@ impl Generator {
 
             // Generate RSS feed
             if let Some(rss_feed_url) = &feed_cfg.rss_feed_url {
-                let mut rss_items = Vec::<rss::Item>::new();
-                for (_, item) in &feed_items {
-                    rss_items.push(item.to_rss_item());
-                }
+                let full_rss_url = config.server_name.clone()
+                    + "/"
+                    + rss_feed_url
+                        .to_str()
+                        .ok_or("Failed to convert feed url pathbuf to string!".to_string())?;
 
-                let channel = rss::ChannelBuilder::default()
-                    .title(&feed_cfg.title)
-                    .description(&feed_cfg.description)
-                    .link(&feed_cfg.link)
-                    .items(rss_items)
-                    .build()
-                    .unwrap();
-                let rss_str = channel.to_string();
+                let rss_str = feed_items_to_rss(&feed_items, &feed_cfg, &full_rss_url);
+
                 files.insert(rss_feed_url.clone(), rss_str);
             }
         }

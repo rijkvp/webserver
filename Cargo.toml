@@ -1,6 +1,6 @@
 [package]
 name = "webserver"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2018"
 
 [dependencies]
@@ -10,6 +10,6 @@ serde = "1.0"
 serde_yaml = "0.8"
 ron = "0.6"
 chrono = { version = "0.4", features = [ "serde" ] }
-rss = { version = "1.10", features = [ "with-serde" ] }
+# Use the alpha 'unflatten' feature of quick-xml
+quick-xml = { version = "0.23.0-alpha3", features = ["serialize"] }
 dirs = "4"
-uuid = { version = "0.8", features = [ "v5" ] }

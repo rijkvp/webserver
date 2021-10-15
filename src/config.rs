@@ -26,6 +26,7 @@ pub struct FeedConfig {
 
 #[derive(Deserialize, Clone)]
 pub struct ServerConfig {
+    pub server_name: String,
     pub target_dir: PathBuf,
     pub index_file: PathBuf,
     pub error_template: PathBuf,
