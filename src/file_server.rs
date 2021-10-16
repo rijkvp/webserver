@@ -31,7 +31,7 @@ pub async fn files(
     // Check if url is a generated template
     if let Some(content) = generator.get(&url_path) {
         if let Some(ext) = url_path.extension() {
-            if let Some(content_type) = ContentType::from_extension(ext.to_str().unwrap()) {
+            if let Some(content_type) = ContentType::from_extension(&ext.to_string_lossy().to_string()) {
                 return FileResponse::Content((content_type, content.to_string()));
             } else {
                 return FileResponse::Content((ContentType::Text, content.to_string()));

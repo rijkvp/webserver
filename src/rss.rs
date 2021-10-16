@@ -86,7 +86,8 @@ pub fn generate_rss_xml(
     let mut buffer = Vec::new();
     let writer = Writer::new_with_indent(&mut buffer, b' ', 2);
     let mut ser = Serializer::with_root(writer, Some("channel"));
-    channel.serialize(&mut ser).unwrap();
-    let rss_channel_str = String::from_utf8(buffer).unwrap();
+    channel.serialize(&mut ser).map_err(|err| format!("XML Serialization error: {}", err.to_string()))?;
+    let rss_channel_str =
+        String::from_utf8(buffer).map_err(|err| format!("Channel string conversion error: {}", err.to_string()))?;
     return Ok(format!("<rss version=\"2.0\">{}</rss>", rss_channel_str));
 }
