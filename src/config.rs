@@ -14,7 +14,7 @@ pub struct FeedConfig {
     pub title: String,
     pub description: String,
     pub link: String,
-    pub rss_feed_url: Option<PathBuf>,
+    pub rss_feed_link: Option<PathBuf>,
 
     // Source
     pub source_dir: PathBuf,

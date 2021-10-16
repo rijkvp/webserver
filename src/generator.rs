@@ -1,4 +1,4 @@
-use crate::{config::ServerConfig, rss::feed_items_to_rss, template_engine::TemplateEngine};
+use crate::{config::ServerConfig, rss::generate_rss_xml, template_engine::TemplateEngine};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::PathBuf};
@@ -60,13 +60,13 @@ pub struct Generator {
 
 #[derive(Serialize)]
 struct EmptyFeedIndex {
-    pub feed_url: Option<PathBuf>,
-    pub items: Vec<FeedItem>,
+    pub feed_link: Option<PathBuf>,
+    pub items: Vec<(String, FeedItem)>,
 }
 
 #[derive(Serialize)]
 struct ContentFeedIndex {
-    pub feed_url: Option<PathBuf>,
+    pub feed_link: Option<PathBuf>,
     pub items: Vec<(PathBuf, FeedItem)>,
 }
 
@@ -157,16 +157,14 @@ impl Generator {
                             })
                             .collect();
                         let index = ContentFeedIndex {
-                            feed_url: feed_cfg.rss_feed_url.clone(),
+                            feed_link: feed_cfg.rss_feed_link.clone(),
                             items,
                         };
                         Context::from_serialize(&index).map_err(|err| err.to_string())?
                     } else {
-                        let items: Vec<FeedItem> =
-                            feed_items.iter().map(|(_, item)| item.clone()).collect();
                         let index = EmptyFeedIndex {
-                            feed_url: feed_cfg.rss_feed_url.clone(),
-                            items,
+                            feed_link: feed_cfg.rss_feed_link.clone(),
+                            items: feed_items.clone(),
                         };
                         Context::from_serialize(&index).map_err(|err| err.to_string())?
                     }
@@ -184,16 +182,19 @@ impl Generator {
             }
 
             // Generate RSS feed
-            if let Some(rss_feed_url) = &feed_cfg.rss_feed_url {
-                let full_rss_url = config.server_name.clone()
-                    + "/"
-                    + rss_feed_url
-                        .to_str()
-                        .ok_or("Failed to convert feed url pathbuf to string!".to_string())?;
-
-                let rss_str = feed_items_to_rss(&feed_items, &feed_cfg, &full_rss_url);
-
-                files.insert(rss_feed_url.clone(), rss_str);
+            if let Some(rss_feed_link) = &feed_cfg.rss_feed_link {
+                let index_output = &feed_cfg.index_output.clone().ok_or(format!(
+                    "An index output is required to generate an RSS feed for '{}'!",
+                    feed_cfg.title
+                ))?;
+                let rss_str = generate_rss_xml(
+                    &feed_items,
+                    &feed_cfg,
+                    &config.server_name,
+                    &index_output,
+                    &rss_feed_link.to_string_lossy().to_string(),
+                )?;
+                files.insert(rss_feed_link.clone(), rss_str);
             }
         }
         Ok(Self { files })
