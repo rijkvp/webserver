@@ -78,7 +78,7 @@ impl Generator {
         let mut files = HashMap::new();
 
         for feed_cfg in &config.feeds {
-            let source_dir = config.target_dir.join(&feed_cfg.source_dir);
+            let source_dir = config.root_dir.join(&feed_cfg.source_dir);
             let mut feed_items = Vec::<(String, FeedItem)>::new();
 
             if source_dir.is_dir() {
@@ -112,7 +112,7 @@ impl Generator {
 
             // Generate content
             if let Some(content_output) = &feed_cfg.content_output {
-                let template_path = config.target_dir.join(&content_output.template);
+                let template_path = config.root_dir.join(&content_output.template);
                 let content_template = fs::read_to_string(&template_path).map_err(|err| {
                     format!(
                         "Failed to load template file '{}': {}",
@@ -138,7 +138,7 @@ impl Generator {
 
             // Generate index
             if let Some(index_output) = &feed_cfg.index_output {
-                let template_path = config.target_dir.join(&index_output.template);
+                let template_path = config.root_dir.join(&index_output.template);
                 let index_template = fs::read_to_string(&template_path).map_err(|err| {
                     format!(
                         "Failed to load index template file '{}': {}",

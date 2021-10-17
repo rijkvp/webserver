@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate rocket;
-
 mod config;
 mod error_handler;
 mod file_server;
@@ -9,21 +6,17 @@ mod rss;
 mod template_engine;
 
 use crate::{
-    config::ServerConfig, error_handler::ErrorHandler, generator::Generator,
+    config::ServerConfig, error_handler::handle_errors, generator::Generator,
     template_engine::TemplateEngine,
 };
+use actix_web::{web, App, HttpServer};
 use file_server::files;
-use rocket::figment::{
-    providers::{Env, Format, Toml},
-    Figment,
-};
 
 const CONFIG_SUBDIR: &str = "webserver";
-const ROCKET_CONFIG_FILE: &str = "rocket_config.toml";
 const SERVER_CONFIG_FILE: &str = "server_config.ron";
 
-#[launch]
-fn rocket() -> _ {
+#[actix_web::main]
+async fn main() -> Result<(), std::io::Error> {
     let config_dir = match dirs::config_dir() {
         Some(dir) => dir.join(CONFIG_SUBDIR),
         None => {
@@ -59,17 +52,17 @@ fn rocket() -> _ {
         }
     };
 
-    let figment = Figment::from(rocket::Config::default())
-        .merge(Toml::file(config_dir.join(ROCKET_CONFIG_FILE)).nested())
-        .merge(Env::prefixed("ROCKET_").global());
+    let socket = (config.address, config.port);
 
-    rocket::custom(figment)
-        .register(
-            "/",
-            ErrorHandler::new(config.clone(), template_engine.clone()),
-        )
-        .manage(config)
-        .manage(template_engine)
-        .manage(generator)
-        .mount("/", routes![files])
+    HttpServer::new(move || {
+        App::new()
+            .data(config.clone())
+            .data(template_engine.clone())
+            .data(generator.clone())
+            .default_service(web::get().to(files))
+            .service(web::scope("").wrap(handle_errors()))
+    })
+    .bind(socket)?
+    .run()
+    .await
 }

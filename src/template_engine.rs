@@ -12,7 +12,7 @@ impl TemplateEngine {
     pub fn load(config: &ServerConfig) -> Result<Self, String> {
         let dirs = format!(
             "{}/**/*.{}",
-            config.target_dir.to_string_lossy(),
+            config.root_dir.to_string_lossy(),
             config.content_ext
         );
         let mut tera = Tera::new(&dirs).map_err(|err| {

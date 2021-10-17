@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, net::IpAddr, path::PathBuf};
 
 use serde::Deserialize;
 
@@ -26,10 +26,12 @@ pub struct FeedConfig {
 
 #[derive(Deserialize, Clone)]
 pub struct ServerConfig {
+    pub address: IpAddr,
+    pub port: u16,
     pub server_name: String,
-    pub target_dir: PathBuf,
-    pub index_file: PathBuf,
-    pub error_template: PathBuf,
+    pub root_dir: PathBuf,
+    pub index: PathBuf,
+    pub error_template: Option<PathBuf>,
     pub content_ext: String,
     pub ignored_paths: Vec<PathBuf>,
     pub feeds: Vec<FeedConfig>,
