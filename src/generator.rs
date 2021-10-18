@@ -1,6 +1,7 @@
 use crate::{config::ServerConfig, rss::generate_rss_xml, template_engine::TemplateEngine};
 use chrono::NaiveDate;
-use serde::{Deserialize, Serialize};
+use comrak::{markdown_to_html, ComrakOptions};
+use serde::{self, ser::Error, Deserialize, Serialize, Serializer};
 use std::{collections::HashMap, fs, path::PathBuf};
 use tera::Context;
 
@@ -17,6 +18,54 @@ struct FeedImage {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub enum FeedContent {
+    #[serde(rename = "html")]
+    Html(String),
+    #[serde(rename = "html_file")]
+    HtmlFile(PathBuf),
+    #[serde(rename = "md")]
+    Markdown(String),
+    #[serde(rename = "md_file")]
+    MarkdownFile(PathBuf),
+}
+
+impl FeedContent {
+    pub fn render(&self) -> Result<String, String> {
+        let md_options = ComrakOptions::default();
+
+        match self {
+            FeedContent::Html(html) => Ok(html.to_string()),
+            FeedContent::HtmlFile(path) => {
+                let html_content = fs::read_to_string(path).map_err(|err| err.to_string())?;
+                Ok(html_content)
+            }
+            FeedContent::Markdown(md) => {
+                let rendered = markdown_to_html(&md, &md_options);
+                Ok(rendered)
+            }
+            FeedContent::MarkdownFile(path) => {
+                let md_content = fs::read_to_string(path).map_err(|err| err.to_string())?;
+                let rendered = markdown_to_html(&md_content, &md_options);
+                Ok(rendered)
+            }
+        }
+    }
+}
+
+fn serialize_content<S>(content: &FeedContent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match content.render() {
+        Ok(content) => serializer.serialize_str(&content),
+        Err(err) => Err(Error::custom(format!(
+            "Failed to render content while seralizing: {}",
+            err
+        ))),
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FeedItem {
     pub title: String,
     subtitle: String,
@@ -25,7 +74,8 @@ pub struct FeedItem {
     date_label: String,
     tags: Vec<String>,
     image: FeedImage,
-    pub content: String,
+    #[serde(serialize_with = "serialize_content")]
+    pub content: FeedContent,
     links: Vec<FeedLink>,
 }
 

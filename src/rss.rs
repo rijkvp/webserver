@@ -71,7 +71,7 @@ pub fn generate_rss_xml(
         rss_items.push(RssItem {
             title: item.title.clone(),
             link,
-            description: item.content.clone(),
+            description: item.content.render()?.clone(),
             guid,
             pub_date: date_to_rfc822(&item.date),
         });
