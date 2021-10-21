@@ -1,4 +1,4 @@
-use std::{fs, net::IpAddr, path::PathBuf};
+use std::{collections::HashMap, fs, net::IpAddr, path::PathBuf};
 
 use serde::Deserialize;
 
@@ -35,6 +35,7 @@ pub struct ServerConfig {
     pub content_ext: String,
     pub ignored_paths: Vec<PathBuf>,
     pub feeds: Vec<FeedConfig>,
+    pub permalinks: HashMap<String, String>
 }
 
 impl ServerConfig {
@@ -46,7 +47,7 @@ impl ServerConfig {
                 &path.display()
             )
         })?;
-        let config = ron::from_str::<ServerConfig>(&config_str)
+        let config = serde_yaml::from_str::<ServerConfig>(&config_str)
             .map_err(|err| format!("Failed to deserialize config file: {}", err))?;
         Ok(config)
     }

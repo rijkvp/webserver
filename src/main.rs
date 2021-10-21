@@ -13,7 +13,7 @@ use actix_web::{web, App, HttpServer};
 use file_server::files;
 
 const CONFIG_SUBDIR: &str = "webserver";
-const SERVER_CONFIG_FILE: &str = "server_config.ron";
+const SERVER_CONFIG_FILE: &str = "config.yaml";
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {

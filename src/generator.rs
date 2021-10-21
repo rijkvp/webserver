@@ -1,7 +1,7 @@
 use crate::{config::ServerConfig, rss::generate_rss_xml, template_engine::TemplateEngine};
 use chrono::NaiveDate;
 use comrak::{markdown_to_html, ComrakOptions};
-use serde::{self, ser::Error, Deserialize, Serialize, Serializer};
+use serde::{self, Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::PathBuf};
 use tera::Context;
 
@@ -18,65 +18,43 @@ struct FeedImage {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub enum FeedContent {
+enum FeedContentType {
     #[serde(rename = "html")]
-    Html(String),
-    #[serde(rename = "html_file")]
-    HtmlFile(PathBuf),
+    Html,
     #[serde(rename = "md")]
-    Markdown(String),
-    #[serde(rename = "md_file")]
-    MarkdownFile(PathBuf),
+    Markdown,
 }
 
-impl FeedContent {
-    pub fn render(&self) -> Result<String, String> {
-        let md_options = ComrakOptions::default();
-
-        match self {
-            FeedContent::Html(html) => Ok(html.to_string()),
-            FeedContent::HtmlFile(path) => {
-                let html_content = fs::read_to_string(path).map_err(|err| err.to_string())?;
-                Ok(html_content)
-            }
-            FeedContent::Markdown(md) => {
-                let rendered = markdown_to_html(&md, &md_options);
-                Ok(rendered)
-            }
-            FeedContent::MarkdownFile(path) => {
-                let md_content = fs::read_to_string(path).map_err(|err| err.to_string())?;
-                let rendered = markdown_to_html(&md_content, &md_options);
-                Ok(rendered)
-            }
-        }
-    }
-}
-
-fn serialize_content<S>(content: &FeedContent, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match content.render() {
-        Ok(content) => serializer.serialize_str(&content),
-        Err(err) => Err(Error::custom(format!(
-            "Failed to render content while seralizing: {}",
-            err
-        ))),
-    }
+#[derive(Serialize, Deserialize, Clone)]
+pub struct FeedMeta {
+    pub title: String,
+    subtitle: Option<String>,
+    #[serde(with = "date_format")]
+    pub date: NaiveDate,
+    date_label: Option<String>,
+    tags: Option<Vec<String>>,
+    image: Option<FeedImage>,
+    links: Option<Vec<FeedLink>>,
+    content_type: FeedContentType,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct FeedItem {
-    pub title: String,
-    subtitle: String,
-    #[serde(with = "date_format")]
-    pub date: NaiveDate,
-    date_label: String,
-    tags: Vec<String>,
-    image: FeedImage,
-    #[serde(serialize_with = "serialize_content")]
-    pub content: FeedContent,
-    links: Vec<FeedLink>,
+    pub file_name: String,
+    pub meta: FeedMeta,
+    pub content: String,
+    pub link: Option<String>,
+}
+
+impl FeedItem {
+    pub fn new(id: String, meta: FeedMeta, content: String) -> Self {
+        Self {
+            file_name: id,
+            meta,
+            content,
+            link: None,
+        }
+    }
 }
 
 mod date_format {
@@ -103,21 +81,27 @@ mod date_format {
     }
 }
 
+fn render_content(input: &str, content_type: &FeedContentType) -> Result<String, String> {
+    let md_options = ComrakOptions::default();
+
+    match content_type {
+        FeedContentType::Html => Ok(input.to_string()),
+        FeedContentType::Markdown => {
+            let rendered = markdown_to_html(&input, &md_options);
+            Ok(rendered)
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct FeedIndex {
+    pub feed_link: Option<PathBuf>,
+    pub items: Vec<FeedItem>,
+}
+
 #[derive(Clone)]
 pub struct Generator {
     files: HashMap<PathBuf, String>,
-}
-
-#[derive(Serialize)]
-struct EmptyFeedIndex {
-    pub feed_link: Option<PathBuf>,
-    pub items: Vec<(String, FeedItem)>,
-}
-
-#[derive(Serialize)]
-struct ContentFeedIndex {
-    pub feed_link: Option<PathBuf>,
-    pub items: Vec<(PathBuf, FeedItem)>,
 }
 
 impl Generator {
@@ -126,39 +110,54 @@ impl Generator {
         template_engine: &mut TemplateEngine,
     ) -> Result<Self, String> {
         let mut files = HashMap::new();
-
         for feed_cfg in &config.feeds {
-            let source_dir = config.root_dir.join(&feed_cfg.source_dir);
-            let mut feed_items = Vec::<(String, FeedItem)>::new();
+            let mut feed_items = Vec::<FeedItem>::new();
 
+            let source_dir = config.root_dir.join(&feed_cfg.source_dir);
             if source_dir.is_dir() {
                 for file in fs::read_dir(&source_dir).map_err(|err| err.to_string())? {
                     let file = file.map_err(|err| err.to_string())?;
                     let path = file.path();
-                    if !path.is_dir() {
-                        let content = fs::read_to_string(&path).map_err(|err| err.to_string())?;
-                        let item = serde_yaml::from_str::<FeedItem>(&content).map_err(|err| {
-                            format!(
-                                "Failed to deserialize file '{}': {}",
-                                path.display(),
-                                err.to_string(),
-                            )
-                        })?;
+                    if let Some(ext) = path.extension() {
+                        if ext.to_string_lossy().to_string() == "md" {
+                            let file_str =
+                                fs::read_to_string(&path).map_err(|err| err.to_string())?;
+                            if let Some((meta, content)) = file_str.split_once("___") {
+                                let meta =
+                                    serde_yaml::from_str::<FeedMeta>(&meta).map_err(|err| {
+                                        format!(
+                                            "Failed to deserialize file '{}': {}",
+                                            path.display(),
+                                            err.to_string(),
+                                        )
+                                    })?;
+                                let html = render_content(content, &meta.content_type)?;
 
-                        if let Some(file_name) = &path.file_stem() {
-                            feed_items.push((file_name.to_string_lossy().to_string(), item));
-                        } else {
-                            return Err(format!(
-                                "Failed to get file stem from path: {}",
-                                path.display()
-                            ));
+                                if let Some(file_name) = &path.file_stem() {
+                                    feed_items.push(FeedItem::new(
+                                        file_name.to_string_lossy().to_string(),
+                                        meta,
+                                        html,
+                                    ));
+                                } else {
+                                    return Err(format!(
+                                        "Failed to get file stem from path: {}",
+                                        path.display()
+                                    ));
+                                }
+                            } else {
+                                return Err(format!(
+                                    "Invalid syntax in '{}'. Make sure there is exactly one meta seperator!",
+                                    path.display()
+                                ));
+                            }
                         }
                     }
                 }
             }
 
-            // Sort the feed ascending by
-            feed_items.sort_by(|a, b| b.1.date.cmp(&a.1.date));
+            // Sort the feed ascending by date
+            feed_items.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
 
             // Generate content
             if let Some(content_output) = &feed_cfg.content_output {
@@ -170,8 +169,9 @@ impl Generator {
                         err.to_string()
                     )
                 })?;
-                for (file_name, item) in &feed_items {
-                    let context = Context::from_serialize(&item).map_err(|err| err.to_string())?;
+                for feed_item in &mut feed_items {
+                    let context =
+                        Context::from_serialize(&feed_item).map_err(|err| err.to_string())?;
                     let rendered_content = template_engine
                         .render_string(&content_template, &context)
                         .map_err(|err| {
@@ -181,8 +181,9 @@ impl Generator {
                                 err.to_string()
                             )
                         })?;
-                    let path = content_output.link.join(file_name);
-                    files.insert(path, rendered_content);
+                    let link = content_output.link.join(feed_item.file_name.clone());
+                    feed_item.link = Some(link.to_string_lossy().to_string());
+                    files.insert(link, rendered_content);
                 }
             }
 
@@ -197,30 +198,13 @@ impl Generator {
                     )
                 })?;
 
-                let index_context = {
-                    if let Some(_) = feed_cfg.content_output {
-                        let items: Vec<(PathBuf, FeedItem)> = feed_items
-                            .iter()
-                            .map(|(file_name, item)| {
-                                let path = index_output.link.join(file_name);
-                                (path, item.clone())
-                            })
-                            .collect();
-                        let index = ContentFeedIndex {
-                            feed_link: feed_cfg.rss_feed_link.clone(),
-                            items,
-                        };
-                        Context::from_serialize(&index).map_err(|err| err.to_string())?
-                    } else {
-                        let index = EmptyFeedIndex {
-                            feed_link: feed_cfg.rss_feed_link.clone(),
-                            items: feed_items.clone(),
-                        };
-                        Context::from_serialize(&index).map_err(|err| err.to_string())?
-                    }
+                let index = FeedIndex {
+                    feed_link: feed_cfg.rss_feed_link.clone(),
+                    items: feed_items.clone(),
                 };
+                let index_ctx = Context::from_serialize(&index).map_err(|err| err.to_string())?;
                 let index_content = template_engine
-                    .render_string(&index_template, &index_context)
+                    .render_string(&index_template, &index_ctx)
                     .map_err(|err| {
                         format!(
                             "Failed to render index template '{}': {}",

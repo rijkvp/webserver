@@ -10,14 +10,21 @@ pub async fn files(
     template_engine: web::Data<TemplateEngine>,
     generator: web::Data<Generator>,
 ) -> HttpResponse {
-    let uri_path_str = req.uri().path().to_string();
-    let uri_path = PathBuf::from(&uri_path_str[1..]);
+    let uri_path_str = &(req.uri().path().to_string())[1..];
+    let uri_path = PathBuf::from(uri_path_str);
 
     // Check if file doesn't start with an ignored path
     for dir in &config.ignored_paths {
         if uri_path.starts_with(dir) {
             return HttpResponse::NotFound().finish();
         }
+    }
+
+    // Permalinks redirect
+    if let Some(link) = config.permalinks.get(uri_path_str) {
+        return HttpResponse::Found()
+            .set_header("Location", link.to_string())
+            .finish();
     }
 
     // Check if url is a generated template
@@ -44,7 +51,7 @@ pub async fn files(
         if ext == OsString::from(&config.content_ext) {
             let clean_url = uri_path.with_extension("");
             let url_string = format!("/{}", clean_url.display());
-            return HttpResponse::PermanentRedirect()
+            return HttpResponse::Found()
                 .set_header("Location", url_string)
                 .finish();
         }
