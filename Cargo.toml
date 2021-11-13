@@ -8,7 +8,7 @@ actix-web = "3.3"
 actix-files = "0.5"
 actix-http = "2"
 mime = "0.3"
-tera = { version = "1.12", features = [ "builtins" ] }
+tera = { version = "1.15", features = [ "builtins" ] }
 comrak = "0.12"
 serde = "1.0"
 serde_yaml = "0.8"
