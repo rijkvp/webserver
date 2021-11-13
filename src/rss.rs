@@ -1,6 +1,6 @@
 use crate::{
     config::{FeedConfig, FeedOutput},
-    generator::{FeedItem},
+    generator::FeedItem,
 };
 use chrono::NaiveDate;
 use quick_xml::{se::Serializer, Writer};
@@ -12,10 +12,20 @@ struct RssChannel {
     title: String,
     #[serde(rename = "$unflatten=link")]
     link: String,
+    #[serde(rename = "atom:link")]
+    atom_link: RssLink,
     #[serde(rename = "$unflatten=description")]
     description: String,
     #[serde(rename = "item")]
     items: Vec<RssItem>,
+}
+
+#[derive(Serialize)]
+struct RssLink {
+    href: String,
+    rel: String,
+    #[serde(rename = "type")]
+    content_type: String,
 }
 
 #[derive(Serialize)]
@@ -55,22 +65,20 @@ pub fn generate_rss_xml(
 
     let mut rss_items = Vec::new();
     for feed_item in feed_items {
-
-        let (link_path, guid) = {
+        let link = {
             if let Some(item_link) = &feed_item.link {
-                (item_link.clone(), item_link.clone())
+                server_name.clone() + "/" + &item_link
             } else {
                 let id_link = full_index_link.clone() + "#" + &feed_item.file_name;
-                (id_link.clone(), id_link.clone())
+                id_link.clone()
             }
         };
-        let link = server_name.clone() + "/" + &link_path;
 
         rss_items.push(RssItem {
             title: feed_item.meta.title.clone(),
-            link,
+            link: link.clone(),
             description: feed_item.content.clone(),
-            guid,
+            guid: link,
             pub_date: date_to_rfc822(&feed_item.meta.date),
         });
     }
@@ -78,6 +86,11 @@ pub fn generate_rss_xml(
         title: feed_cfg.title.clone(),
         description: feed_cfg.description.clone(),
         link: full_feed_link.to_string(),
+        atom_link: RssLink {
+            href: full_feed_link.to_string(),
+            rel: "self".to_string(),
+            content_type: "application/rss+xml".to_string(),
+        },
         items: rss_items,
     };
 
@@ -89,5 +102,8 @@ pub fn generate_rss_xml(
         .map_err(|err| format!("XML Serialization error: {}", err.to_string()))?;
     let rss_channel_str = String::from_utf8(buffer)
         .map_err(|err| format!("Channel string conversion error: {}", err.to_string()))?;
-    return Ok(format!("<rss version=\"2.0\">{}</rss>", rss_channel_str));
+    return Ok(format!(
+        "<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">{}</rss>",
+        rss_channel_str
+    ));
 }
