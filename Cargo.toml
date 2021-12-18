@@ -16,3 +16,9 @@ chrono = { version = "0.4", features = [ "serde" ] }
 # Use the alpha 'unflatten' feature of quick-xml
 quick-xml = { version = "0.23.0-alpha3", features = ["serialize"] }
 dirs = "4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = 'abort'
